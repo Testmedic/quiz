@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>KvizOpoly</title>
+<style>
+/* ─── RESET & BASE ─────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F7F3EE;color:#1C1C1E;user-select:none}
+
+/* ─── SCREENS ──────────────────────────────────────── */
+.screen{position:fixed;inset:0;display:none;flex-direction:column;overflow:hidden}
+.screen.on{display:flex}
+
+/* ─── COLORS ───────────────────────────────────────── */
+:root{
+  --ink:#1C1C1E;--ink2:#48484A;--ink3:#8E8E93;
+  --paper:#F7F3EE;--white:#FFFFFF;
+  --line:#E5E0D8;
+  --blue:#007AFF;--blue-bg:#EBF4FF;
+  --green:#34C759;--green-bg:#E8F8ED;
+  --red:#FF3B30;--red-bg:#FFF0EF;
+  --orange:#FF9500;--orange-bg:#FFF4E5;
+  --purple:#AF52DE;--purple-bg:#F5EEFF;
+  --yellow:#FFD60A;--yellow-bg:#FFFBE5;
+  --teal:#5AC8FA;--teal-bg:#EAF8FF;
+  --pink:#FF2D55;--pink-bg:#FFF0F3;
+  --r:16px;--r2:12px;--r3:8px;
+  --sh:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.06);
+  --sh2:0 2px 8px rgba(0,0,0,.1),0 8px 24px rgba(0,0,0,.08);
+}
+
+/* ─── TYPOGRAPHY ───────────────────────────────────── */
+.t-hero{font-size:2.2rem;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.t-title{font-size:1.25rem;font-weight:700;letter-spacing:-.02em}
+.t-body{font-size:.95rem;font-weight:400;line-height:1.5}
+.t-label{font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3)}
+.t-num{font-size:1.6rem;font-weight:800;letter-spacing:-.03em}
+.t-sm{font-size:.8rem;color:var(--ink3)}
+
+/* ─── LAYOUT ───────────────────────────────────────── */
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1}
+.scroll::-webkit-scrollbar{display:none}
+.pad{padding:16px}
+.pad-h{padding:0 16px}
+.gap4{gap:4px}.gap8{gap:8px}.gap12{gap:12px}.gap16{gap:16px}
+.row{display:flex;align-items:center}
+.col{display:flex;flex-direction:column}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* ─── CARDS ────────────────────────────────────────── */
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.card-sm{background:var(--white);border-radius:var(--r2);box-shadow:var(--sh)}
+
+/* ─── BUTTONS ──────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:var(--r2);font-weight:700;cursor:pointer;transition:transform .12s,opacity .12s;-webkit-appearance:none}
+.btn:active{transform:scale(.96);opacity:.85}
+.btn-lg{padding:15px 24px;font-size:1rem;border-radius:var(--r)}
+.btn-md{padding:11px 18px;font-size:.9rem}
+.btn-sm{padding:7px 13px;font-size:.78rem;border-radius:var(--r3)}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-ghost{background:transparent;color:var(--ink2);border:1.5px solid var(--line)}
+.btn-paper{background:var(--paper);color:var(--ink)}
+.btn-full{width:100%}
+
+/* ─── PILL / BADGE ─────────────────────────────────── */
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:4px 11px;font-size:.75rem;font-weight:700}
+.pill-blue{background:var(--blue-bg);color:var(--blue)}
+.pill-green{background:var(--green-bg);color:var(--green)}
+.pill-orange{background:var(--orange-bg);color:var(--orange)}
+.pill-purple{background:var(--purple-bg);color:var(--purple)}
+.pill-red{background:var(--red-bg);color:var(--red)}
+.pill-yellow{background:var(--yellow-bg);color:#B8860B}
+
+/* ─── PROGRESS BAR ─────────────────────────────────── */
+.prog-track{background:var(--line);border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;border-radius:99px;transition:width .4s ease}
+
+/* ─── DIVIDER ──────────────────────────────────────── */
+.div{height:1px;background:var(--line);margin:0 16px}
+
+/* ─── TOAST ────────────────────────────────────────── */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;border-radius:var(--r2);padding:10px 18px;font-size:.84rem;font-weight:600;opacity:0;transition:all .25s;z-index:9999;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ─── MODAL ────────────────────────────────────────── */
+#moverlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:none;align-items:flex-end;justify-content:center}
+#moverlay.on{display:flex}
+#msheet{background:var(--white);border-radius:24px 24px 0 0;padding:20px 20px 36px;width:100%;max-width:480px;box-shadow:0 -8px 40px rgba(0,0,0,.15)}
+.mhandle{width:36px;height:4px;background:var(--line);border-radius:4px;margin:0 auto 18px}
+
+/* ─── BOTTOM NAV ───────────────────────────────────── */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:500}
+.bni{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 12px;border:none;background:none;color:var(--ink3);font-size:.62rem;font-weight:600;transition:color .15s;min-width:60px}
+.bni.on{color:var(--blue)}
+.bni .ico{font-size:1.35rem;line-height:1;transition:transform .15s}
+.bni.on .ico{transform:scale(1.1)}
+
+/* ─── TOP BAR ──────────────────────────────────────── */
+.topbar{background:var(--white);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-title{font-size:1.05rem;font-weight:700}
+
+/* ─── STREAK FLAME ─────────────────────────────────── */
+@keyframes flame{0%,100%{transform:scale(1) rotate(-2deg)}50%{transform:scale(1.08) rotate(2deg)}}
+.flame{display:inline-block;animation:flame 1.2s ease-in-out infinite}
+
+/* ─── XP BURST ─────────────────────────────────────── */
+@keyframes xpburst{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-60px) scale(1.4)}}
+.xpburst{position:fixed;font-size:1.1rem;font-weight:800;color:var(--orange);pointer-events:none;animation:xpburst .8s ease forwards;z-index:9998}
+
+/* ─── SHAKE ────────────────────────────────────────── */
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.shake{animation:shake .35s ease}
+
+/* ─── GLOW ─────────────────────────────────────────── */
+@keyframes glow{0%,100%{box-shadow:var(--sh)}50%{box-shadow:0 0 0 4px rgba(52,199,89,.25),var(--sh)}}
+.glow{animation:glow .4s ease}
+
+/* ─── BOUNCE ───────────────────────────────────────── */
+@keyframes bounce{0%,100%{transform:scale(1)}40%{transform:scale(1.12)}70%{transform:scale(.95)}}
+.bounce{animation:bounce .4s ease}
+
+/* ─── COIN SPIN ────────────────────────────────────── */
+@keyframes coinspin{0%{transform:rotateY(0)}100%{transform:rotateY(360deg)}}
+.coinspin{animation:coinspin .6s ease}
+
+/* ─── PROPERTY COLORS ──────────────────────────────── */
+.prop-brown{background:#8B4513}
+.prop-lblue{background:#87CEEB}
+.prop-pink{background:#FF69B4}
+.prop-orange{background:#FF8C00}
+.prop-red{background:#DC143C}
+.prop-yellow{background:#FFD700}
+.prop-green{background:#228B22}
+.prop-blue{background:#00008B}
+.prop-station{background:#555}
+.prop-utility{background:#888}
+
+/* ─── ANSWER BUTTONS ───────────────────────────────── */
+.ans-btn{width:100%;background:var(--white);border:2px solid var(--line);border-radius:var(--r2);padding:13px 16px;text-align:left;cursor:pointer;font-size:.92rem;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:12px;transition:border-color .15s,background .15s;-webkit-appearance:none}
+.ans-btn:active:not(:disabled){transform:scale(.98)}
+.ans-btn .altr{width:30px;height:30px;border-radius:9px;background:var(--paper);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.78rem;color:var(--ink3);flex-shrink:0;transition:all .15s}
+.ans-btn:hover:not(:disabled){border-color:var(--blue);background:var(--blue-bg)}
+.ans-btn:hover:not(:disabled) .altr{background:var(--blue);color:#fff}
+.ans-btn:disabled{cursor:default}
+.ans-btn.correct{background:var(--green-bg);border-color:var(--green);color:#1a5c2a}
+.ans-btn.correct .altr{background:var(--green);color:#fff}
+.ans-btn.wrong{background:var(--red-bg);border-color:var(--red);color:#7a1a1a}
+.ans-btn.wrong .altr{background:var(--red);color:#fff}
+.ans-btn.dim{opacity:.3}
+
+/* ─── TIMER BAR ────────────────────────────────────── */
+.tbar-wrap{height:5px;background:var(--line);border-radius:5px;overflow:hidden}
+.tbar{height:100%;border-radius:5px;transition:width linear}
+.tbar.ok{background:var(--green)}.tbar.no{background:var(--red)}
+
+/* ─── PROPERTY CARD ────────────────────────────────── */
+.prop-card{background:var(--white);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative}
+.prop-card:active{transform:scale(.97)}
+.prop-card .prop-top{height:8px}
+.prop-card .prop-body{padding:10px 12px 12px}
+.prop-card .prop-name{font-size:.82rem;font-weight:700;line-height:1.2;margin-bottom:4px}
+.prop-card .prop-price{font-size:.72rem;color:var(--ink3);font-weight:600}
+.prop-card .prop-owner{position:absolute;top:10px;right:10px;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:#fff}
+.prop-card.owned{box-shadow:var(--sh2)}
+.prop-card .prop-level{display:flex;gap:2px;margin-top:6px}
+.prop-card .prop-level span{width:8px;height:8px;border-radius:2px;background:var(--line)}
+.prop-card .prop-level span.filled{background:var(--orange)}
+
+/* ─── PLAYER AVATAR ────────────────────────────────── */
+.avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;flex-shrink:0}
+
+/* ─── LEADERBOARD ROW ──────────────────────────────── */
+.lb-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--white);border-radius:var(--r2);box-shadow:var(--sh)}
+.lb-rank{width:28px;text-align:center;font-size:.85rem;font-weight:800;color:var(--ink3)}
+.lb-rank.gold{color:#B8860B}.lb-rank.silver{color:#888}.lb-rank.bronze{color:#8B4513}
+
+/* ─── IMPORT TEXTAREA ──────────────────────────────── */
+.imp-ta{width:100%;min-height:180px;background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r2);padding:12px;font-size:.86rem;font-family:monospace;color:var(--ink);line-height:1.6;resize:vertical;outline:none}
+.imp-ta:focus{border-color:var(--blue);background:var(--white)}
+.imp-ta::placeholder{color:var(--ink3)}
+.form-inp{width:100%;background:var(--paper);border:1.5px solid var(--line);border-radius:var(--r2);padding:10px 13px;font-size:.9rem;color:var(--ink);outline:none}
+.form-inp:focus{border-color:var(--blue);background:var(--white)}
+select.form-inp option{background:var(--white)}
+
+/* ─── NOTIFICATION DOT ─────────────────────────────── */
+.notif-dot{width:8px;height:8px;background:var(--red);border-radius:50%;position:absolute;top:2px;right:2px}
+
+/* ─── CONFETTI ─────────────────────────────────────── */
+@keyframes conffall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+.conf{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;animation:conffall linear forwards;z-index:9997}
+
+/* PROFESSOR CSV + POLISHED UI */
+body{background:linear-gradient(180deg,#f8fbff,#eef4fb);font-family:system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif}.screen{background:linear-gradient(180deg,#fbfdff,#f1f6fb)}.card,.card-sm,.prop-card,.lb-row{border:1px solid #e2eaf3;box-shadow:0 14px 34px rgba(42,64,94,.10)}.topbar,.bnav{background:rgba(255,255,255,.9);backdrop-filter:blur(18px)}.btn{min-height:44px;border-radius:14px}.btn-blue{background:linear-gradient(135deg,#0b7be8,#635cf2)}
+.prof-card{padding:17px;border-radius:22px;background:linear-gradient(145deg,#fff,#eef8ff);border:1px solid #d9eaf7;box-shadow:0 16px 38px rgba(32,92,132,.11)}.prof-head{display:flex;align-items:center;gap:11px}.prof-icon{width:52px;height:52px;border-radius:16px;object-fit:cover}.prof-grid{display:grid;grid-template-columns:1.3fr .8fr .6fr;gap:8px;margin:13px 0}.prof-output{width:100%;min-height:310px;border:0;border-radius:16px;padding:13px;background:#101a31;color:#eef6ff;font:650 .73rem/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;user-select:text}.prof-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.csv-drop{margin-top:12px;padding:16px;border-radius:17px;border:2px dashed #55a9e6;text-align:center;background:#f9fcff;cursor:pointer}.csv-note{font-size:.72rem;line-height:1.45;color:var(--ink3);margin-top:8px}.csv-status{display:none;margin-top:9px;padding:10px;border-radius:12px;background:var(--green-bg);color:#177448;font-size:.76rem;font-weight:800}.csv-status.on{display:block}@media(max-width:560px){.prof-grid{grid-template-columns:1fr 1fr}.prof-grid>:first-child{grid-column:1/-1}.prof-actions{grid-template-columns:1fr}}
+
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0B74E5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="KvizOpoly">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- MODAL -->
+<div id="moverlay">
+  <div id="msheet">
+    <div class="mhandle"></div>
+    <div id="msheet-content"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SCREEN: HOME ──────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="screen on" id="s-home">
+  <div class="scroll">
+    <div class="pad col gap16" style="padding-bottom:90px">
+
+      <!-- Header -->
+      <div class="row" style="justify-content:space-between;padding-top:8px">
+        <div>
+          <div class="t-label">Dobrodošel nazaj 👋</div>
+          <div class="t-title" id="h-name">Učenec</div>
+        </div>
+        <div class="row gap8">
+          <div class="pill pill-orange"><span class="flame">🔥</span><span id="h-streak">0</span></div>
+          <div class="pill pill-yellow">⚡ <span id="h-xp">0</span></div>
+        </div>
+      </div>
+
+      <!-- Daily challenge banner -->
+      <div id="daily-banner" style="background:linear-gradient(135deg,#007AFF,#5856D6);border-radius:var(--r);padding:18px;color:#fff;position:relative;overflow:hidden;cursor:pointer" onclick="goTo('s-quiz-list')">
+        <div style="position:absolute;right:-12px;bottom:-12px;font-size:5rem;opacity:.15">🎯</div>
+        <div class="t-label" style="color:rgba(255,255,255,.8);margin-bottom:6px">🔥 DNEVNI IZZIV</div>
+        <div style="font-size:1.05rem;font-weight:700;margin-bottom:4px" id="daily-title">Začni nov kviz!</div>
+        <div style="font-size:.82rem;opacity:.85;margin-bottom:14px" id="daily-sub">Ustvari kviz in osvoji XP</div>
+        <div class="row gap8">
+          <div style="background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:.75rem;font-weight:700">⚡ +100 XP</div>
+          <div style="background:rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:.75rem;font-weight:700">🏠 +1 Posest</div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid3">
+        <div class="card-sm pad col gap4" style="padding:12px;text-align:center">
+          <div class="t-num" style="color:var(--blue)" id="st-quizzes">0</div>
+          <div class="t-label">Kvizov</div>
+        </div>
+        <div class="card-sm pad col gap4" style="padding:12px;text-align:center">
+          <div class="t-num" style="color:var(--green)" id="st-coins">0</div>
+          <div class="t-label">Kovancev</div>
+        </div>
+        <div class="card-sm pad col gap4" style="padding:12px;text-align:center">
+          <div class="t-num" style="color:var(--orange)" id="st-props">0</div>
+          <div class="t-label">Posesti</div>
+        </div>
+      </div>
+
+      <!-- My properties preview -->
+      <div>
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <div class="t-title" style="font-size:1rem">🏠 Moje posesti</div>
+          <button class="btn btn-sm btn-ghost" onclick="goTo('s-map')">Vse →</button>
+        </div>
+        <div id="home-props" class="grid2"></div>
+      </div>
+
+      <!-- Recent quizzes -->
+      <div>
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <div class="t-title" style="font-size:1rem">📚 Moji kvizi</div>
+          <button class="btn btn-sm btn-ghost" onclick="goTo('s-quiz-list')">Vse →</button>
+        </div>
+        <div id="home-quizzes" class="col gap8"></div>
+      </div>
+
+      <div class="card-sm" style="padding:12px 14px;background:var(--green-bg);border:1px solid rgba(52,199,89,.2)"><div style="font-weight:800;color:#227744">☁️ Samodejno shranjevanje vključeno</div><div class="t-sm" style="margin-top:3px">Kvizi se hranijo v dveh lokalnih shrambah. Urejanje kviza ne izbriše izvirnika.</div></div>
+      <!-- Achievements -->
+      <div>
+        <div class="t-title" style="font-size:1rem;margin-bottom:10px">🏆 Dosežki</div>
+        <div class="card pad" style="padding:16px">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+            <div id="ach-0" class="col gap4" style="align-items:center;opacity:.35">
+              <div style="width:48px;height:48px;border-radius:14px;background:var(--yellow-bg);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🌟</div>
+              <div style="font-size:.62rem;font-weight:700;color:var(--ink3);text-align:center">Začetnik</div>
+            </div>
+            <div id="ach-1" class="col gap4" style="align-items:center;opacity:.35">
+              <div style="width:48px;height:48px;border-radius:14px;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🧠</div>
+              <div style="font-size:.62rem;font-weight:700;color:var(--ink3);text-align:center">Mislec</div>
+            </div>
+            <div id="ach-2" class="col gap4" style="align-items:center;opacity:.35">
+              <div style="width:48px;height:48px;border-radius:14px;background:var(--orange-bg);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🔥</div>
+              <div style="font-size:.62rem;font-weight:700;color:var(--ink3);text-align:center">Serija 7</div>
+            </div>
+            <div id="ach-3" class="col gap4" style="align-items:center;opacity:.35">
+              <div style="width:48px;height:48px;border-radius:14px;background:var(--green-bg);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🏠</div>
+              <div style="font-size:.62rem;font-weight:700;color:var(--ink3);text-align:center">Lastnik</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="bni on" onclick="goTo('s-home')"><span class="ico">🏠</span>Domov</button>
+    <button class="bni" onclick="goTo('s-map')"><span class="ico">🗺️</span>Mapa</button>
+    <button class="bni" onclick="goTo('s-quiz-list')"><span class="ico">📚</span>Kvizi</button>
+    <button class="bni" onclick="goTo('s-lb')"><span class="ico">🏆</span>Lestvica</button>
+    <button class="bni" onclick="goTo('s-import')"><span class="ico">➕</span>Nov</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SCREEN: MAP (MONOPOLY) ────────────────────────── -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-map">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">🗺️ Mapa posesti</div>
+      <div class="t-sm">Kupi posesti z kovanci</div>
+    </div>
+    <div class="pill pill-yellow">🪙 <span id="map-coins">0</span></div>
+  </div>
+  <div class="scroll">
+    <div class="pad col gap12" style="padding-bottom:90px">
+      <div class="card-sm pad" style="padding:12px;background:var(--blue-bg);border:1px solid rgba(0,122,255,.15)">
+        <div style="font-size:.82rem;color:var(--blue);font-weight:600">💡 Kako deluje?</div>
+        <div style="font-size:.78rem;color:var(--ink2);margin-top:3px;line-height:1.5">Odgovarjaj pravilno → zasluži kovance → kupi posesti → nadgradi jih → poberi najemnino od prijateljev!</div>
+      </div>
+      <div id="map-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="bni" onclick="goTo('s-home')"><span class="ico">🏠</span>Domov</button>
+    <button class="bni on" onclick="goTo('s-map')"><span class="ico">🗺️</span>Mapa</button>
+    <button class="bni" onclick="goTo('s-quiz-list')"><span class="ico">📚</span>Kvizi</button>
+    <button class="bni" onclick="goTo('s-lb')"><span class="ico">🏆</span>Lestvica</button>
+    <button class="bni" onclick="goTo('s-import')"><span class="ico">➕</span>Nov</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SCREEN: QUIZ LIST ─────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-quiz-list">
+  <div class="topbar">
+    <div class="topbar-title">📚 Kvizi</div>
+    <button class="btn btn-sm btn-blue" onclick="goTo('s-import')">➕ Nov</button>
+  </div>
+  <div class="scroll">
+    <div class="pad col gap10" style="padding-bottom:90px">
+      <div style="position:relative">
+        <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--ink3)">🔍</span>
+        <input class="form-inp" id="ql-search" placeholder="Išči kvize..." style="padding-left:36px" oninput="renderQL()">
+      </div>
+      <div id="ql-list" class="col gap8"></div>
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="bni" onclick="goTo('s-home')"><span class="ico">🏠</span>Domov</button>
+    <button class="bni" onclick="goTo('s-map')"><span class="ico">🗺️</span>Mapa</button>
+    <button class="bni on" onclick="goTo('s-quiz-list')"><span class="ico">📚</span>Kvizi</button>
+    <button class="bni" onclick="goTo('s-lb')"><span class="ico">🏆</span>Lestvica</button>
+    <button class="bni" onclick="goTo('s-import')"><span class="ico">➕</span>Nov</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SCREEN: LEADERBOARD ───────────────────────────── -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-lb">
+  <div class="topbar">
+    <div class="topbar-title">🏆 Lestvica</div>
+    <div class="pill pill-blue">Ta teden</div>
+  </div>
+  <div class="scroll">
+    <div class="pad col gap10" style="padding-bottom:90px">
+      <!-- Podium -->
+      <div class="card pad" style="padding:20px;text-align:center">
+        <div style="display:flex;align-items:flex-end;justify-content:center;gap:8px;height:100px">
+          <div class="col gap4" style="align-items:center">
+            <div style="font-size:1.5rem">🥈</div>
+            <div style="background:var(--paper);border-radius:10px 10px 0 0;width:70px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+              <div style="font-size:1.2rem" id="lb-2-av">🤖</div>
+              <div style="font-size:.62rem;font-weight:700;color:var(--ink3)" id="lb-2-name">–</div>
+            </div>
+          </div>
+          <div class="col gap4" style="align-items:center">
+            <div style="font-size:1.8rem">🥇</div>
+            <div style="background:var(--yellow-bg);border:2px solid var(--yellow);border-radius:10px 10px 0 0;width:80px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+              <div style="font-size:1.4rem" id="lb-1-av">👑</div>
+              <div style="font-size:.65rem;font-weight:800;color:var(--ink)" id="lb-1-name">–</div>
+            </div>
+          </div>
+          <div class="col gap4" style="align-items:center">
+            <div style="font-size:1.3rem">🥉</div>
+            <div style="background:var(--paper);border-radius:10px 10px 0 0;width:70px;height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+              <div style="font-size:1.1rem" id="lb-3-av">🤖</div>
+              <div style="font-size:.62rem;font-weight:700;color:var(--ink3)" id="lb-3-name">–</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="lb-list" class="col gap8"></div>
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="bni" onclick="goTo('s-home')"><span class="ico">🏠</span>Domov</button>
+    <button class="bni" onclick="goTo('s-map')"><span class="ico">🗺️</span>Mapa</button>
+    <button class="bni" onclick="goTo('s-quiz-list')"><span class="ico">📚</span>Kvizi</button>
+    <button class="bni on" onclick="goTo('s-lb')"><span class="ico">🏆</span>Lestvica</button>
+    <button class="bni" onclick="goTo('s-import')"><span class="ico">➕</span>Nov</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SCREEN: IMPORT ────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-import">
+  <div class="topbar">
+    <button class="btn btn-sm btn-ghost" onclick="goTo('s-home')">← Nazaj</button>
+    <div class="topbar-title">➕ Nov kviz</div>
+    <button class="btn btn-sm btn-blue" onclick="doSave()">Shrani</button>
+  </div>
+  <div class="scroll">
+    <div class="pad col gap12" style="padding-bottom:90px">
+
+      <div class="card pad col gap10" style="padding:16px">
+        <div class="col gap6">
+          <label class="t-label">Ime kviza</label>
+          <input class="form-inp" id="qname" placeholder="npr. Nemščina B2...">
+        </div>
+        <div class="col gap6">
+          <label class="t-label">Kategorija</label>
+          <input class="form-inp" id="qcat" placeholder="npr. Jeziki, Medicina...">
+        </div>
+      </div>
+
+
+<div class="prof-card" id="professor-csv-card">
+  <div class="prof-head"><img src="icons/icon-192.png" class="prof-icon" alt="KvizOpoly delfin"><div><div class="t-label">AI PROFESOR + CSV</div><div style="font-weight:900">Najlažji generator vprašanj</div><div class="t-sm">Izberi področje, raven in število vprašanj.</div></div></div>
+  <div class="prof-grid"><input class="form-inp" id="prof-topic" value="Nemščina" placeholder="Področje, npr. anatomija" oninput="buildProfessorPrompt()"><input class="form-inp" id="prof-level" value="B1" placeholder="Raven" oninput="buildProfessorPrompt()"><input class="form-inp" id="prof-count" type="number" min="5" max="500" value="150" inputmode="numeric" oninput="buildProfessorPrompt()"></div>
+  <textarea class="prof-output" id="prof-prompt" readonly></textarea>
+  <div class="prof-actions"><button class="btn btn-md btn-blue" onclick="copyProfessorPrompt()">📋 Kopiraj celoten prompt</button><button class="btn btn-md btn-ghost" onclick="downloadProfessorPrompt()">⬇️ Izvozi prompt TXT</button></div>
+  <div class="csv-drop" onclick="document.getElementById('csv-file').click()"><b>📊 Uvozi CSV, ki ga je ustvaril AI</b><div class="csv-note">Stolpci: question, option1, option2, option3, option4, correct, explanation, category</div></div>
+  <input id="csv-file" type="file" hidden accept=".csv,text/csv" onchange="importQuizCSV(this.files[0])">
+  <div class="prof-actions"><button class="btn btn-md btn-ghost" onclick="downloadCSVTemplate()">Prenesi primer CSV</button><button class="btn btn-md btn-ghost" onclick="document.getElementById('csv-file').click()">Izberi CSV</button></div>
+  <div class="csv-status" id="csv-status"></div>
+</div>
+
+      <!-- Format help -->
+      <div style="background:var(--blue-bg);border-radius:var(--r2);padding:14px;font-size:.8rem;color:var(--ink2);line-height:1.8;border:1px solid rgba(0,122,255,.12)">
+        <div style="font-weight:700;color:var(--blue);margin-bottom:6px">📋 Format uvoza</div>
+        <div style="font-family:monospace;background:var(--white);border-radius:8px;padding:10px;font-size:.78rem;color:var(--ink);line-height:1.9">Vprašanje?<br><br>Odgovor A<br>Odgovor B (P)<br>Odgovor C<br>// Razlaga</div>
+        <div style="margin-top:8px;font-size:.75rem">Pravilni: <code style="background:rgba(0,122,255,.12);padding:1px 5px;border-radius:4px;color:var(--blue)">(P)</code> ali <code style="background:rgba(0,122,255,.12);padding:1px 5px;border-radius:4px;color:var(--blue)">[P]</code> ali <code style="background:rgba(0,122,255,.12);padding:1px 5px;border-radius:4px;color:var(--blue)">*</code> &nbsp;·&nbsp; Med vprašanji: prazna vrstica</div>
+      </div>
+
+      <div class="card pad col gap10" style="padding:16px">
+        <div class="row" style="justify-content:space-between">
+          <label class="t-label">Vprašanja</label>
+          <div class="row gap6">
+            <button class="btn btn-sm btn-ghost" onclick="loadEx()">📖 Primer</button>
+            <button class="btn btn-sm btn-ghost" onclick="clearTA()">🗑️</button>
+          </div>
+        </div>
+        <textarea class="imp-ta" id="impta" placeholder="Vstavi vprašanja...&#10;&#10;Primer:&#10;Kaj je glavno mesto Francije?&#10;&#10;Berlin&#10;Paris (P)&#10;London&#10;Madrid"></textarea>
+      </div>
+
+      <div class="card pad col gap10" style="padding:16px">
+        <div class="t-label">Nastavitve</div>
+        <div class="grid2">
+          <div class="col gap4">
+            <label class="t-label">✅ Čas pravilno (s)</label>
+            <input class="form-inp" id="ict" type="number" min="1" max="20" value="2">
+          </div>
+          <div class="col gap4">
+            <label class="t-label">❌ Čas napačno (s)</label>
+            <input class="form-inp" id="iwt" type="number" min="1" max="60" value="5">
+          </div>
+          <div class="col gap4">
+            <label class="t-label">🔀 Premešaj vpr.</label>
+            <select class="form-inp" id="isq"><option value="1">Da</option><option value="0">Ne</option></select>
+          </div>
+          <div class="col gap4">
+            <label class="t-label">🔀 Premešaj odg.</label>
+            <select class="form-inp" id="isa"><option value="1">Da</option><option value="0">Ne</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="card pad col gap10" id="prevsec" style="padding:16px;display:none">
+        <div class="row" style="justify-content:space-between">
+          <div class="t-label">👁️ Predogled</div>
+          <div class="t-sm" id="prevcnt"></div>
+        </div>
+        <div id="prevlist" class="col gap8" style="max-height:240px;overflow-y:auto"></div>
+      </div>
+
+      <div class="row gap8">
+        <button class="btn btn-md btn-ghost" style="flex:1" onclick="doPreview()">👁️ Predogled</button>
+        <button class="btn btn-md btn-blue" style="flex:1" onclick="doSave()">💾 Shrani</button>
+        <button class="btn btn-md btn-green" style="flex:1" onclick="doStart()">▶️ Začni</button>
+      </div>
+
+    </div>
+  </div>
+  <div class="bnav">
+    <button class="bni" onclick="goTo('s-home')"><span class="ico">🏠</span>Domov</button>
+    <button class="bni" onclick="goTo('s-map')"><span class="ico">🗺️</span>Mapa</button>
+    <button class="bni" onclick="goTo('s-quiz-list')"><span class="ico">📚</span>Kvizi</button>
+    <button class="bni" onclick="goTo('s-lb')"><span class="ico">🏆</span>Lestvica</button>
+    <button class="bni on" onclick="goTo('s-import')"><span class="ico">➕</span>Nov</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SCREEN: QUIZ ──────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-quiz">
+  <!-- Header -->
+  <div style="background:var(--white);border-bottom:1px solid var(--line);padding:12px 16px;flex-shrink:0">
+    <div class="row gap12" style="margin-bottom:8px">
+      <button class="btn btn-sm btn-ghost" style="padding:6px 10px" onclick="confirmQuit()">✕</button>
+      <div style="flex:1">
+        <div class="row" style="justify-content:space-between;margin-bottom:4px">
+          <div class="t-sm" id="q-badge">Kviz</div>
+          <div class="t-sm" id="q-num">1/10</div>
+        </div>
+        <div class="prog-track" style="height:6px">
+          <div class="prog-fill" id="q-prog" style="width:0%;background:linear-gradient(90deg,var(--blue),var(--purple))"></div>
+        </div>
+      </div>
+      <div class="pill pill-orange">⚡<span id="q-xp">0</span></div>
+    </div>
+    <!-- Live score -->
+    <div class="row gap8">
+      <div style="flex:1;background:var(--green-bg);border-radius:8px;padding:6px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800;color:var(--green)" id="q-sc">0</div>
+        <div style="font-size:.6rem;color:var(--ink3);font-weight:600">Pravilno</div>
+      </div>
+      <div style="flex:1;background:var(--red-bg);border-radius:8px;padding:6px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800;color:var(--red)" id="q-sw">0</div>
+        <div style="font-size:.6rem;color:var(--ink3);font-weight:600">Napačno</div>
+      </div>
+      <div style="flex:1;background:var(--blue-bg);border-radius:8px;padding:6px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800;color:var(--blue)" id="q-pct">–</div>
+        <div style="font-size:.6rem;color:var(--ink3);font-weight:600">Uspešnost</div>
+      </div>
+      <div style="flex:1;background:var(--yellow-bg);border-radius:8px;padding:6px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:800;color:#B8860B" id="q-coins">0</div>
+        <div style="font-size:.6rem;color:var(--ink3);font-weight:600">Kovanci</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <div class="pad col gap12" style="padding-bottom:20px">
+      <!-- Question -->
+      <div class="card pad" id="qcard" style="padding:18px">
+        <div class="t-sm" id="q-cat-badge" style="margin-bottom:8px">📚 Kviz</div>
+        <div style="font-size:1.05rem;font-weight:700;line-height:1.5;color:var(--ink)" id="qtext">Vprašanje...</div>
+      </div>
+      <!-- Options -->
+      <div class="col gap8" id="qopts"></div>
+      <!-- Feedback -->
+      <div id="qfb" style="display:none;border-radius:var(--r2);padding:12px 14px;font-size:.84rem;font-weight:500;line-height:1.55;white-space:pre-line"></div>
+      <!-- Timer -->
+      <div class="tbar-wrap" id="qtw" style="display:none"><div class="tbar" id="qtb"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<!-- SCREEN: END ───────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="screen" id="s-end">
+  <div class="scroll">
+    <div style="background:linear-gradient(160deg,#007AFF,#5856D6,#AF52DE);padding:40px 20px 60px;text-align:center;color:#fff">
+      <div style="font-size:4rem;margin-bottom:8px" id="e-emoji">🏆</div>
+      <div style="font-size:1.6rem;font-weight:800;margin-bottom:4px">Kviz končan!</div>
+      <div style="font-size:3.5rem;font-weight:900;margin:8px 0" id="e-pct">0%</div>
+      <div style="font-size:.9rem;opacity:.9" id="e-msg">Odlično!</div>
+    </div>
+
+    <!-- Stats cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px;margin-top:-24px">
+      <div class="card-sm" style="padding:14px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:900;color:var(--green)" id="e-c">0</div>
+        <div class="t-label">Pravilno</div>
+      </div>
+      <div class="card-sm" style="padding:14px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:900;color:var(--red)" id="e-w">0</div>
+        <div class="t-label">Napačno</div>
+      </div>
+      <div class="card-sm" style="padding:14px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:900;color:var(--orange)" id="e-xp">+0</div>
+        <div class="t-label">XP zaslužen</div>
+      </div>
+      <div class="card-sm" style="padding:14px;text-align:center">
+        <div style="font-size:1.6rem;font-weight:900;color:#B8860B" id="e-coins">+0</div>
+        <div class="t-label">Kovanci</div>
+      </div>
+    </div>
+
+    <!-- Reward unlocked -->
+    <div class="pad col gap10" style="padding-top:0;padding-bottom:100px">
+      <div id="e-reward" class="card-sm" style="padding:14px;background:var(--yellow-bg);border:1px solid rgba(255,214,10,.3);display:none">
+        <div style="font-weight:700;color:#B8860B;margin-bottom:4px">🎉 Odklenjena nagrada!</div>
+        <div style="font-size:.84rem;color:var(--ink2)" id="e-reward-text"></div>
+      </div>
+
+      <button class="btn btn-lg btn-blue btn-full" onclick="restartQuiz()">🔄 Igraj znova</button>
+      <button class="btn btn-lg btn-ghost btn-full" onclick="restartWrong()">🔁 Ponovi napačne</button>
+      <button class="btn btn-lg btn-ghost btn-full" onclick="goTo('s-map')">🗺️ Kupi posest</button>
+      <button class="btn btn-lg btn-ghost btn-full" onclick="goTo('s-home')">🏠 Domov</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+var S = {
+  quizzes: [],
+  xp: 0,
+  coins: 0,
+  streak: 0,
+  lastPlay: null,
+  properties: {},   // propId -> {level:0-4, owner:'me'}
+  totalPlayed: 0,
+  bestScores: {}
+};
+
+// Monopoly-style properties
+var PROPS = [
+  {id:'p1',name:'Mediteranska',color:'#8B4513',price:60,rent:[2,10,30,90,160],upgrade:50,group:'brown',emoji:'🏚️'},
+  {id:'p2',name:'Baltska',color:'#8B4513',price:60,rent:[4,20,60,180,320],upgrade:50,group:'brown',emoji:'🏠'},
+  {id:'p3',name:'Vzhodna',color:'#87CEEB',price:100,rent:[6,30,90,270,400],upgrade:50,group:'lblue',emoji:'🏡'},
+  {id:'p4',name:'Vermont',color:'#87CEEB',price:100,rent:[6,30,90,270,400],upgrade:50,group:'lblue',emoji:'🏘️'},
+  {id:'p5',name:'Connecticut',color:'#87CEEB',price:120,rent:[8,40,100,300,450],upgrade:50,group:'lblue',emoji:'🏗️'},
+  {id:'p6',name:'St. Charles',color:'#FF69B4',price:140,rent:[10,50,150,450,625],upgrade:100,group:'pink',emoji:'🏢'},
+  {id:'p7',name:'States',color:'#FF69B4',price:140,rent:[10,50,150,450,625],upgrade:100,group:'pink',emoji:'🏬'},
+  {id:'p8',name:'Virginia',color:'#FF69B4',price:160,rent:[12,60,180,500,700],upgrade:100,group:'pink',emoji:'🏦'},
+  {id:'p9',name:'St. James',color:'#FF8C00',price:180,rent:[14,70,200,550,750],upgrade:100,group:'orange',emoji:'🏨'},
+  {id:'p10',name:'Tennessee',color:'#FF8C00',price:180,rent:[14,70,200,550,750],upgrade:100,group:'orange',emoji:'🏩'},
+  {id:'p11',name:'New York',color:'#FF8C00',price:200,rent:[16,80,220,600,800],upgrade:100,group:'orange',emoji:'🗽'},
+  {id:'p12',name:'Kentucky',color:'#DC143C',price:220,rent:[18,90,250,700,875],upgrade:150,group:'red',emoji:'🏰'},
+  {id:'p13',name:'Indiana',color:'#DC143C',price:220,rent:[18,90,250,700,875],upgrade:150,group:'red',emoji:'🏯'},
+  {id:'p14',name:'Illinois',color:'#DC143C',price:240,rent:[20,100,300,750,925],upgrade:150,group:'red',emoji:'🗼'},
+  {id:'p15',name:'Atlantic',color:'#FFD700',price:260,rent:[22,110,330,800,975],upgrade:150,group:'yellow',emoji:'🌅'},
+  {id:'p16',name:'Ventnor',color:'#FFD700',price:260,rent:[22,110,330,800,975],upgrade:150,group:'yellow',emoji:'🌇'},
+  {id:'p17',name:'Marvin',color:'#FFD700',price:280,rent:[24,120,360,850,1025],upgrade:150,group:'yellow',emoji:'🌆'},
+  {id:'p18',name:'Pacific',color:'#228B22',price:300,rent:[26,130,390,900,1100],upgrade:200,group:'green',emoji:'🌿'},
+  {id:'p19',name:'North Carolina',color:'#228B22',price:300,rent:[26,130,390,900,1100],upgrade:200,group:'green',emoji:'🌲'},
+  {id:'p20',name:'Pennsylvania',color:'#228B22',price:320,rent:[28,150,450,1000,1200],upgrade:200,group:'green',emoji:'🌳'},
+  {id:'p21',name:'Park Place',color:'#00008B',price:350,rent:[35,175,500,1100,1300],upgrade:200,group:'blue',emoji:'🏟️'},
+  {id:'p22',name:'Boardwalk',color:'#00008B',price:400,rent:[50,200,600,1400,1700],upgrade:200,group:'blue',emoji:'🎡'},
+];
+
+var AVATARS = ['😎','🦊','🐯','🦁','🐸','🦄','🐙','🦋','🐺','🦅'];
+var COLORS_BG = ['#EBF4FF','#F5F3FF','#F0FFF4','#FFF0F6','#FFF8E1','#FFF5F5','#EAF8FF','#F0FFF4'];
+
+// ═══════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════
+var STORAGE_KEY='kvo_s_v2',LEGACY_KEY='kvo_s',DB_NAME='KvizOpolyDB',DB_STORE='state';
+function normalizeState(d){
+  d=d||{};
+  return {
+    quizzes:Array.isArray(d.quizzes)?d.quizzes:[],
+    xp:Number(d.xp)||0,coins:Number(d.coins)||0,streak:Number(d.streak)||0,
+    lastPlay:d.lastPlay||null,properties:d.properties||{},totalPlayed:Number(d.totalPlayed)||0,
+    bestScores:d.bestScores||{},lastSaved:Number(d.lastSaved)||0
+  };
+}
+function applyState(d){var n=normalizeState(d);Object.keys(n).forEach(function(k){S[k]=n[k];});}
+function loadS(){
+  try{
+    var raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem(LEGACY_KEY);
+    if(raw)applyState(JSON.parse(raw));
+  }catch(e){console.warn('Local storage load failed',e);}
+}
+function openStateDB(){return new Promise(function(resolve,reject){
+  if(!('indexedDB' in window)){reject(new Error('IndexedDB unavailable'));return;}
+  var req=indexedDB.open(DB_NAME,1);
+  req.onupgradeneeded=function(){if(!req.result.objectStoreNames.contains(DB_STORE))req.result.createObjectStore(DB_STORE);};
+  req.onsuccess=function(){resolve(req.result);};req.onerror=function(){reject(req.error);};
+});}
+function saveToIndexedDB(snapshot){openStateDB().then(function(db){
+  var tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put(snapshot,'main');
+}).catch(function(e){console.warn('IndexedDB save failed',e);});}
+function restoreFromIndexedDB(){return openStateDB().then(function(db){return new Promise(function(resolve){
+  var req=db.transaction(DB_STORE,'readonly').objectStore(DB_STORE).get('main');
+  req.onsuccess=function(){resolve(req.result||null);};req.onerror=function(){resolve(null);};
+});}).then(function(d){
+  if(d && (!S.lastSaved || Number(d.lastSaved)>Number(S.lastSaved))){applyState(d);persistLocalOnly();renderHome();}
+  return d;
+}).catch(function(){return null;});}
+function persistLocalOnly(){
+  try{var json=JSON.stringify(S);localStorage.setItem(STORAGE_KEY,json);localStorage.setItem(LEGACY_KEY,json);return true;}
+  catch(e){console.warn('Local storage save failed',e);return false;}
+}
+function saveS(){
+  S.lastSaved=Date.now();var ok=persistLocalOnly();saveToIndexedDB(JSON.parse(JSON.stringify(S)));
+  if(!ok)toast('⚠️ Safari ni dovolil shranjevanja. Izvozi varnostno kopijo.');
+}
+window.addEventListener('pagehide',saveS);
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')saveS();});
+
+// ═══════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on');});
+  document.getElementById(id).classList.add('on');
+  // Update bottom nav
+  var map={'s-home':'s-home','s-map':'s-map','s-quiz-list':'s-quiz-list','s-lb':'s-lb','s-import':'s-import'};
+  document.querySelectorAll('.bni').forEach(function(b){b.classList.remove('on');});
+  if(id==='s-home')document.querySelectorAll('.bni')[0].classList.add('on');
+  if(id==='s-map')document.querySelectorAll('.bni')[1].classList.add('on');
+  if(id==='s-quiz-list')document.querySelectorAll('.bni')[2].classList.add('on');
+  if(id==='s-lb')document.querySelectorAll('.bni')[3].classList.add('on');
+  if(id==='s-import')document.querySelectorAll('.bni')[4].classList.add('on');
+  window.scrollTo(0,0);
+  if(id==='s-home')renderHome();
+  if(id==='s-map')renderMap();
+  if(id==='s-quiz-list')renderQL();
+  if(id==='s-lb')renderLB();
+}
+
+// ═══════════════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════════════
+function renderHome(){
+  document.getElementById('h-xp').textContent=S.xp;
+  document.getElementById('h-streak').textContent=S.streak;
+  document.getElementById('st-quizzes').textContent=S.quizzes.length;
+  document.getElementById('st-coins').textContent=S.coins;
+  var ownedCount=Object.keys(S.properties).filter(function(k){return S.properties[k]&&S.properties[k].owner==='me';}).length;
+  document.getElementById('st-props').textContent=ownedCount;
+
+  // Daily banner
+  if(S.quizzes.length>0){
+    var last=S.quizzes[S.quizzes.length-1];
+    document.getElementById('daily-title').textContent=last.name;
+    document.getElementById('daily-sub').textContent=last.questions.length+' vprašanj · '+last.category;
+  }
+
+  // Achievements
+  if(S.quizzes.length>=1)document.getElementById('ach-0').style.opacity='1';
+  if(S.xp>=500)document.getElementById('ach-1').style.opacity='1';
+  if(S.streak>=7)document.getElementById('ach-2').style.opacity='1';
+  if(ownedCount>=1)document.getElementById('ach-3').style.opacity='1';
+
+  // Properties preview
+  var hp=document.getElementById('home-props');
+  var owned=PROPS.filter(function(p){return S.properties[p.id]&&S.properties[p.id].owner==='me';});
+  if(owned.length===0){
+    hp.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--ink3);font-size:.84rem">Še nimaš posesti.<br>Zasluži kovance in kupi!</div>';
+  } else {
+    hp.innerHTML=owned.slice(0,4).map(function(p){
+      var lvl=S.properties[p.id]?S.properties[p.id].level:0;
+      return '<div class="prop-card" onclick="showPropDetail(\''+p.id+'\')">'
+        +'<div class="prop-top" style="background:'+p.color+'"></div>'
+        +'<div class="prop-body">'
+        +'<div class="prop-name">'+p.emoji+' '+p.name+'</div>'
+        +'<div class="prop-price">Nivo '+lvl+' · '+p.rent[lvl]+'🪙/igra</div>'
+        +'<div class="prop-level">'+[0,1,2,3,4].map(function(i){return '<span class="'+(i<lvl?'filled':'')+'"></span>';}).join('')+'</div>'
+        +'</div></div>';
+    }).join('');
+  }
+
+  // Recent quizzes
+  var hq=document.getElementById('home-quizzes');
+  if(S.quizzes.length===0){
+    hq.innerHTML='<div style="text-align:center;padding:24px;color:var(--ink3);font-size:.84rem">Še nimaš kvizov.<br>Klikni <strong>Nov</strong> in začni!</div>';
+    return;
+  }
+  hq.innerHTML=S.quizzes.slice(-3).reverse().map(function(q,i){
+    var idx=S.quizzes.indexOf(q);
+    var best=S.bestScores[q.id]?'🏆 '+S.bestScores[q.id]+'%':'–';
+    return '<div style="background:var(--white);border-radius:var(--r2);padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh);cursor:pointer" onclick="startById('+q.id+')">'
+      +'<div style="width:42px;height:42px;border-radius:12px;background:'+COLORS_BG[idx%COLORS_BG.length]+';display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📚</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(q.name)+'</div>'
+      +'<div style="font-size:.72rem;color:var(--ink3);margin-top:2px">'+esc(q.category)+' · '+q.questions.length+' vpr. · '+best+'</div></div>'
+      +'<div style="color:var(--ink3);font-size:1.1rem">›</div></div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════════
+function renderMap(){
+  document.getElementById('map-coins').textContent=S.coins;
+  var g=document.getElementById('map-grid');
+  g.innerHTML=PROPS.map(function(p){
+    var owned=S.properties[p.id]&&S.properties[p.id].owner==='me';
+    var lvl=owned?S.properties[p.id].level:0;
+    var canBuy=!owned&&S.coins>=p.price;
+    return '<div class="prop-card'+(owned?' owned':'')+'" onclick="showPropDetail(\''+p.id+'\')">'
+      +'<div class="prop-top" style="background:'+p.color+'"></div>'
+      +'<div class="prop-body">'
+      +(owned?'<div class="prop-owner" style="background:'+p.color+'">✓</div>':'')
+      +'<div class="prop-name">'+p.emoji+' '+p.name+'</div>'
+      +'<div class="prop-price">'+(owned?'Nivo '+lvl+' · '+p.rent[lvl]+'🪙':'🪙 '+p.price)+'</div>'
+      +'<div class="prop-level">'+[0,1,2,3,4].map(function(i){return '<span class="'+(i<lvl?'filled':'')+'"></span>';}).join('')+'</div>'
+      +(canBuy?'<div style="margin-top:6px;font-size:.68rem;font-weight:700;color:var(--green)">Kupi →</div>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+function showPropDetail(id){
+  var p=PROPS.find(function(x){return x.id===id;});
+  if(!p)return;
+  var owned=S.properties[id]&&S.properties[id].owner==='me';
+  var lvl=owned?S.properties[id].level:0;
+  var canBuy=!owned&&S.coins>=p.price;
+  var canUpgrade=owned&&lvl<4&&S.coins>=p.upgrade;
+
+  var html='<div style="text-align:center;margin-bottom:16px">'
+    +'<div style="font-size:2.5rem;margin-bottom:6px">'+p.emoji+'</div>'
+    +'<div style="font-size:1.2rem;font-weight:800">'+p.name+'</div>'
+    +'<div style="display:inline-block;width:60px;height:8px;border-radius:4px;background:'+p.color+';margin-top:6px"></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">'
+    +'<div style="background:var(--paper);border-radius:10px;padding:10px;text-align:center"><div style="font-weight:800;font-size:1.1rem">🪙 '+p.price+'</div><div style="font-size:.7rem;color:var(--ink3)">Cena</div></div>'
+    +'<div style="background:var(--paper);border-radius:10px;padding:10px;text-align:center"><div style="font-weight:800;font-size:1.1rem">'+p.rent[lvl]+'🪙</div><div style="font-size:.7rem;color:var(--ink3)">Najemnina</div></div>'
+    +'</div>'
+    +'<div style="margin-bottom:14px">'
+    +'<div style="font-size:.75rem;font-weight:700;color:var(--ink3);margin-bottom:6px">NIVOJI NAJEMNINE</div>'
+    +'<div style="display:flex;gap:4px">'
+    +[0,1,2,3,4].map(function(i){
+      return '<div style="flex:1;background:'+(i<=lvl?p.color:'var(--line)')+';border-radius:4px;padding:4px;text-align:center;color:'+(i<=lvl?'#fff':'var(--ink3)')+';font-size:.65rem;font-weight:700">'+p.rent[i]+'</div>';
+    }).join('')
+    +'</div></div>';
+
+  if(owned){
+    html+='<div style="background:var(--green-bg);border-radius:10px;padding:10px;margin-bottom:14px;font-size:.82rem;color:var(--green);font-weight:600">✓ V lasti · Nivo '+lvl+'/4</div>';
+    if(canUpgrade){
+      html+='<button class="btn btn-lg btn-orange btn-full" onclick="upgradeP(\''+id+'\')">⬆️ Nadgradi za 🪙 '+p.upgrade+'</button>';
+    } else if(lvl>=4){
+      html+='<div style="text-align:center;color:var(--ink3);font-size:.84rem;padding:8px">Maksimalni nivo dosežen! 🏆</div>';
+    } else {
+      html+='<div style="text-align:center;color:var(--ink3);font-size:.84rem;padding:8px">Premalo kovancev za nadgradnjo ('+p.upgrade+'🪙)</div>';
+    }
+  } else if(canBuy){
+    html+='<button class="btn btn-lg btn-green btn-full" onclick="buyP(\''+id+'\')">🏠 Kupi za 🪙 '+p.price+'</button>';
+  } else {
+    html+='<div style="text-align:center;color:var(--ink3);font-size:.84rem;padding:8px">Premalo kovancev (imaš '+S.coins+'🪙, potrebuješ '+p.price+'🪙)</div>';
+  }
+
+  showModal(html);
+}
+
+function buyP(id){
+  var p=PROPS.find(function(x){return x.id===id;});
+  if(!p||S.coins<p.price)return;
+  S.coins-=p.price;
+  S.properties[id]={owner:'me',level:0};
+  saveS();
+  closeModal();
+  renderMap();
+  renderHome();
+  toast('🏠 Kupil si '+p.name+'!');
+  confetti();
+}
+
+function upgradeP(id){
+  var p=PROPS.find(function(x){return x.id===id;});
+  if(!p||!S.properties[id]||S.coins<p.upgrade)return;
+  S.coins-=p.upgrade;
+  S.properties[id].level=Math.min(4,S.properties[id].level+1);
+  saveS();
+  closeModal();
+  renderMap();
+  renderHome();
+  toast('⬆️ '+p.name+' nadgrajena na nivo '+S.properties[id].level+'!');
+}
+
+// ═══════════════════════════════════════════════════════
+// QUIZ LIST
+// ═══════════════════════════════════════════════════════
+function renderQL(){
+  var search=(document.getElementById('ql-search')?document.getElementById('ql-search').value:'').toLowerCase();
+  var filtered=S.quizzes.filter(function(q){return !search||q.name.toLowerCase().indexOf(search)!==-1||q.category.toLowerCase().indexOf(search)!==-1;});
+  var c=document.getElementById('ql-list');
+  if(filtered.length===0){
+    c.innerHTML='<div style="text-align:center;padding:40px;color:var(--ink3);font-size:.88rem">'+(search?'Ni rezultatov':'Še nimaš kvizov.<br>Klikni <strong>Nov</strong> in začni!')+'</div>';
+    return;
+  }
+  c.innerHTML=filtered.map(function(q,i){
+    var idx=S.quizzes.indexOf(q);
+    var best=S.bestScores[q.id]?'🏆 '+S.bestScores[q.id]+'%':'–';
+    return '<div style="background:var(--white);border-radius:var(--r2);padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh)">'
+      +'<div style="width:44px;height:44px;border-radius:12px;background:'+COLORS_BG[idx%COLORS_BG.length]+';display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">📚</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-weight:700;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(q.name)+'</div>'
+      +'<div style="font-size:.72rem;color:var(--ink3);margin-top:2px">'+esc(q.category)+' · '+q.questions.length+' vpr. · '+best+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<button style="width:32px;height:32px;border-radius:9px;border:none;background:var(--blue-bg);color:var(--blue);cursor:pointer;font-size:.9rem" onclick="startById('+q.id+')">▶</button>'
+      +'<button style="width:32px;height:32px;border-radius:9px;border:none;background:var(--yellow-bg);color:var(--orange);cursor:pointer;font-size:.9rem" onclick="editQ('+q.id+')">✏️</button>'
+      +'<button style="width:32px;height:32px;border-radius:9px;border:none;background:var(--red-bg);color:var(--red);cursor:pointer;font-size:.9rem" onclick="confirmDel('+q.id+')">🗑️</button>'
+      +'</div></div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// LEADERBOARD (simulated AI opponents)
+// ═══════════════════════════════════════════════════════
+var AI_PLAYERS=[
+  {name:'Ana K.',av:'👩',xp:0},{name:'Miha P.',av:'🧑',xp:0},{name:'Sara L.',av:'👧',xp:0},
+  {name:'Luka M.',av:'👦',xp:0},{name:'Maja T.',av:'🙋',xp:0},{name:'Rok B.',av:'🧔',xp:0}
+];
+
+function renderLB(){
+  // Generate AI XP based on player XP
+  var base=Math.max(100,S.xp);
+  AI_PLAYERS[0].xp=Math.floor(base*1.3+Math.random()*50);
+  AI_PLAYERS[1].xp=Math.floor(base*1.1+Math.random()*40);
+  AI_PLAYERS[2].xp=Math.floor(base*0.95+Math.random()*30);
+  AI_PLAYERS[3].xp=Math.floor(base*0.8+Math.random()*20);
+  AI_PLAYERS[4].xp=Math.floor(base*0.6+Math.random()*15);
+  AI_PLAYERS[5].xp=Math.floor(base*0.4+Math.random()*10);
+
+  var all=[{name:'Ti',av:'😎',xp:S.xp,isMe:true}].concat(AI_PLAYERS.map(function(p){return {name:p.name,av:p.av,xp:p.xp,isMe:false};}));
+  all.sort(function(a,b){return b.xp-a.xp;});
+
+  // Podium
+  if(all.length>=1){document.getElementById('lb-1-av').textContent=all[0].av;document.getElementById('lb-1-name').textContent=all[0].name;}
+  if(all.length>=2){document.getElementById('lb-2-av').textContent=all[1].av;document.getElementById('lb-2-name').textContent=all[1].name;}
+  if(all.length>=3){document.getElementById('lb-3-av').textContent=all[2].av;document.getElementById('lb-3-name').textContent=all[2].name;}
+
+  var list=document.getElementById('lb-list');
+  list.innerHTML=all.map(function(p,i){
+    var rankCls=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    var rankTxt=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    return '<div class="lb-row" style="'+(p.isMe?'background:var(--blue-bg);border:1.5px solid rgba(0,122,255,.2)':'')+'">'
+      +'<div class="lb-rank '+rankCls+'">'+rankTxt+'</div>'
+      +'<div style="width:36px;height:36px;border-radius:50%;background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">'+p.av+'</div>'
+      +'<div style="flex:1"><div style="font-weight:700;font-size:.88rem">'+esc(p.name)+(p.isMe?' (Ti)':'')+'</div>'
+      +'<div style="font-size:.72rem;color:var(--ink3)">⚡ '+p.xp+' XP</div></div>'
+      +'</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// PARSER
+// ═══════════════════════════════════════════════════════
+function isExp(l){return /^\s*\/\//.test(l)||/^\s*Razlaga:/i.test(l)||/^\s*Explanation:/i.test(l);}
+function hasMarker(lines){for(var i=0;i<lines.length;i++){if(/\(P\)|\[P\]/i.test(lines[i])||/\*\s*$/.test(lines[i]))return true;}return false;}
+function extractOpts(lines){
+  var opts=[],ans=0,exp='';
+  for(var i=0;i<lines.length;i++){
+    var l=lines[i].trim();if(!l)continue;
+    if(isExp(l)){exp=l.replace(/^\s*\/\/\s*/,'').replace(/^\s*Razlaga:\s*/i,'').replace(/^\s*Explanation:\s*/i,'').trim();continue;}
+    var c=l.replace(/^[\d]+[.)]\s+/,'').replace(/^[a-zA-Z][.)]\s+/,'').trim();
+    var ok=/\(P\)|\[P\]/i.test(c)||/\*\s*$/.test(c)||/^[✓✔]/.test(c);
+    c=c.replace(/\s*\(P\)\s*$/i,'').replace(/\s*\[P\]\s*$/i,'').replace(/\s*\*\s*$/,'').replace(/^[✓✔]\s*/,'').trim();
+    if(c){if(ok)ans=opts.length;opts.push(c);}
+  }
+  return{opts:opts,ans:ans,exp:exp};
+}
+function parseText(raw){
+  var qs=[];
+  raw=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n').trim();
+  if(!raw)return qs;
+  // Pipe
+  if(raw.indexOf('|')!==-1&&raw.indexOf('\n\n')===-1){
+    var lines=raw.split('\n');var pqs=[];
+    for(var i=0;i<lines.length;i++){var l=lines[i].trim();if(!l)continue;
+      var parts=l.split('|').map(function(p){return p.trim();}).filter(function(p){return p;});
+      if(parts.length<3)continue;var q=parts[0],opts=[],ans=0;
+      for(var j=1;j<parts.length;j++){var o=parts[j];if(o.charAt(0)==='*'){ans=opts.length;o=o.slice(1).trim();}if(o)opts.push(o);}
+      if(opts.length>=2)pqs.push({q:q,opts:opts,ans:ans,exp:''});}
+    if(pqs.length>0)return pqs;
+  }
+  // CSV
+  if(raw.indexOf(',')!==-1&&raw.indexOf('\n\n')===-1){
+    var lines=raw.split('\n').filter(function(l){return l.trim();});var cqs=[],ok=true;
+    for(var i=0;i<lines.length;i++){var parts=lines[i].split(',').map(function(p){return p.trim();}).filter(function(p){return p;});
+      if(parts.length<3){ok=false;break;}var q=parts[0],opts=[],ans=0;
+      for(var j=1;j<parts.length;j++){var o=parts[j];if(o.charAt(0)==='*'){ans=opts.length;o=o.slice(1).trim();}if(o)opts.push(o);}
+      if(opts.length>=2)cqs.push({q:q,opts:opts,ans:ans,exp:''});}
+    if(ok&&cqs.length>0)return cqs;
+  }
+  // Blocks
+  var blocks=raw.split(/\n[ \t]*\n/).map(function(b){return b.trim();}).filter(function(b){return b;});
+  var i=0;
+  while(i<blocks.length){
+    var lines=blocks[i].split('\n').map(function(l){return l.trim();}).filter(function(l){return l;});
+    if(!lines.length){i++;continue;}
+    var nonExp=lines.filter(function(l){return !isExp(l);});
+    if(nonExp.length===1&&!hasMarker(lines)&&i+1<blocks.length){
+      var qline=nonExp[0];
+      var nextLines=blocks[i+1].split('\n').map(function(l){return l.trim();}).filter(function(l){return l;});
+      var r=extractOpts(nextLines);
+      if(r.opts.length>=2){qs.push({q:qline,opts:r.opts,ans:r.ans,exp:r.exp});i+=2;continue;}
+    }
+    if(lines.length>=2){var r=extractOpts(lines.slice(1));if(r.opts.length>=2)qs.push({q:lines[0],opts:r.opts,ans:r.ans,exp:r.exp});}
+    i++;
+  }
+  return qs;
+}
+
+// ═══════════════════════════════════════════════════════
+// IMPORT ACTIONS
+// ═══════════════════════════════════════════════════════
+var parsed=[],editingQuizId=null;
+function doPreview(){
+  var raw=document.getElementById('impta').value;
+  if(!raw.trim()){toast('⚠️ Vstavi besedilo z vprašanji!');return;}
+  parsed=parseText(raw);
+  if(parsed.length===0){toast('❌ Ni vprašanj! Preveri format – med vprašanji mora biti prazna vrstica.');return;}
+  showPreview(parsed);toast('✅ Najdenih '+parsed.length+' vprašanj!');
+}
+function showPreview(qs){
+  document.getElementById('prevsec').style.display='block';
+  document.getElementById('prevcnt').textContent=qs.length+' vprašanj';
+  document.getElementById('prevlist').innerHTML=qs.map(function(q,i){
+    return '<div style="background:var(--paper);border-radius:10px;padding:10px 12px;border:1px solid var(--line)">'
+      +'<div style="font-weight:700;font-size:.84rem;margin-bottom:6px">'+(i+1)+'. '+esc(q.q)+'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:5px">'
+      +q.opts.map(function(o,oi){return '<span style="padding:3px 9px;border-radius:7px;font-size:.75rem;font-weight:600;background:'+(oi===q.ans?'var(--green-bg)':'var(--paper)')+';color:'+(oi===q.ans?'var(--green)':'var(--ink3)')+';border:1px solid '+(oi===q.ans?'rgba(52,199,89,.3)':'var(--line)')+'">'+esc(o)+'</span>';}).join('')
+      +'</div>'+(q.exp?'<div style="font-size:.72rem;color:var(--ink3);margin-top:5px;padding-top:5px;border-top:1px solid var(--line)">💡 '+esc(q.exp)+'</div>':'')
+      +'</div>';
+  }).join('');
+}
+function getSettings(){return{correctTime:Math.max(1,parseInt(document.getElementById('ict').value)||2),wrongTime:Math.max(1,parseInt(document.getElementById('iwt').value)||5),shuffleQ:document.getElementById('isq').value==='1',shuffleA:document.getElementById('isa').value==='1',showExp:true};}
+function getParsed(){if(parsed.length>0)return parsed;var raw=document.getElementById('impta').value;if(!raw.trim())return[];parsed=parseText(raw);return parsed;}
+function doSave(){
+  var raw=document.getElementById('impta').value;
+  if(!raw.trim()){toast('⚠️ Vstavi besedilo z vprašanji!');return;}
+  parsed=parseText(raw);
+  if(parsed.length===0){toast('❌ Ni vprašanj! Preveri format.');return;}
+  var name=document.getElementById('qname').value.trim()||('Kviz '+(S.quizzes.length+1));
+  var cat=document.getElementById('qcat').value.trim()||'Splošno';
+  var existing=editingQuizId!==null?S.quizzes.find(function(q){return String(q.id)===String(editingQuizId);}):null;
+  if(existing){
+    existing.name=name;existing.category=cat;existing.questions=parsed.slice();existing.settings=getSettings();
+    existing.updated=new Date().toLocaleDateString('sl-SI');
+  }else{
+    S.quizzes.push({id:Date.now(),name:name,category:cat,questions:parsed.slice(),settings:getSettings(),created:new Date().toLocaleDateString('sl-SI'),playCount:0});
+  }
+  editingQuizId=null;saveS();
+  toast(existing?'✅ Spremembe shranjene!':'✅ Kviz "'+name+'" trajno shranjen! ('+parsed.length+' vprašanj)');
+  document.getElementById('qname').value='';document.getElementById('qcat').value='';document.getElementById('impta').value='';document.getElementById('prevsec').style.display='none';parsed=[];
+  setTimeout(function(){goTo('s-quiz-list');},700);
+}
+function doStart(){
+  var raw=document.getElementById('impta').value;
+  if(!raw.trim()){toast('⚠️ Vstavi besedilo z vprašanji!');return;}
+  var qs=getParsed();
+  if(qs.length===0){toast('❌ Ni vprašanj! Preveri format.');return;}
+  var name=document.getElementById('qname').value.trim()||'Začasni kviz';
+  curQuiz={id:null,name:name,category:document.getElementById('qcat').value.trim()||'Splošno',questions:qs,settings:getSettings()};
+  startQuiz(curQuiz);
+}
+function loadEx(){
+  document.getElementById('impta').value="Kateri stavek pravilno uporablja veznik weil?\n\nIch bleibe zu Hause, weil ich krank bin. (P)\nIch bleibe zu Hause, weil bin ich krank.\nWeil ich bin krank, bleibe ich zu Hause.\nIch bleibe, weil zu Hause ich krank bin.\n// Razlaga: Pri vezniku weil gre glagol v odvisnem stavku na konec.\n\nKaj pomeni obwohl?\n\nker\nčeprav (P)\nzato\nmedtem ko\n// Razlaga: Obwohl pomeni čeprav.\n\nKaj je glavno mesto Francije?\n1. Berlin\n2. Paris (P)\n3. London\n4. Madrid";
+  document.getElementById('qname').value='Primer kviza';document.getElementById('qcat').value='Splošno znanje';
+  parsed=[];document.getElementById('prevsec').style.display='none';
+  toast('📖 Primer naložen!');
+}
+function clearTA(){document.getElementById('impta').value='';document.getElementById('prevsec').style.display='none';parsed=[];}
+
+// ═══════════════════════════════════════════════════════
+// QUIZ ENGINE
+// ═══════════════════════════════════════════════════════
+var curQuiz=null,curQs=[],qi=0,qc=0,qw=0,qans=false,qtimer=null,qwrong=[],qCoins=0;
+
+function startById(id){
+  var quiz=S.quizzes.find(function(q){return q.id===id;});
+  if(!quiz)return;
+  quiz.playCount=(quiz.playCount||0)+1;saveS();
+  startQuiz(quiz);
+}
+function editQ(id){
+  var quiz=S.quizzes.find(function(q){return q.id===id;});if(!quiz)return;
+  document.getElementById('qname').value=quiz.name;document.getElementById('qcat').value=quiz.category;
+  var s=quiz.settings||{};
+  document.getElementById('ict').value=s.correctTime||2;document.getElementById('iwt').value=s.wrongTime||5;
+  document.getElementById('isq').value=s.shuffleQ?'1':'0';document.getElementById('isa').value=s.shuffleA?'1':'0';
+  var txt='';
+  for(var i=0;i<quiz.questions.length;i++){var q=quiz.questions[i];if(i>0)txt+='\n\n';txt+=q.q+'\n';for(var j=0;j<q.opts.length;j++)txt+=(j+1)+'. '+q.opts[j]+(j===q.ans?' (P)':'')+'\n';if(q.exp)txt+='// '+q.exp;}
+  document.getElementById('impta').value=txt.trim();parsed=quiz.questions.slice();showPreview(parsed);
+  editingQuizId=id;saveS();
+  goTo('s-import');toast('✏️ Urejaš kviz. Izvirnik ostane shranjen do potrditve.');
+}
+
+function startQuiz(quiz){
+  curQuiz=quiz;var s=quiz.settings||{};
+  var qs=quiz.questions.slice();
+  if(s.shuffleQ!==false)qs=shuffle(qs);
+  curQs=qs;qi=0;qc=0;qw=0;qans=false;qwrong=[];qCoins=0;
+  if(qtimer)clearTimeout(qtimer);
+  goTo('s-quiz');
+  showQ();
+}
+
+function showQ(){
+  if(qi>=curQs.length){showEnd();return;}
+  qans=false;if(qtimer)clearTimeout(qtimer);
+  var q=curQs[qi];var s=curQuiz.settings||{};
+  document.getElementById('q-badge').textContent=curQuiz.name;
+  document.getElementById('q-num').textContent=(qi+1)+'/'+curQs.length;
+  document.getElementById('q-cat-badge').textContent='📚 '+curQuiz.category;
+  document.getElementById('qtext').textContent=q.q;
+  document.getElementById('q-xp').textContent=qc*10;
+  document.getElementById('q-coins').textContent=qCoins;
+  var pct=(qi/curQs.length)*100;
+  document.getElementById('q-prog').style.width=pct+'%';
+
+  var idxs=[];for(var i=0;i<q.opts.length;i++)idxs.push(i);
+  if(s.shuffleA!==false)idxs=shuffle(idxs);
+  var correctOrig=q.ans;
+
+  var od=document.getElementById('qopts');od.innerHTML='';
+  for(var di=0;di<idxs.length;di++){
+    (function(dIdx,oIdx){
+      var btn=document.createElement('button');
+      btn.className='ans-btn';
+      var ltr=document.createElement('span');ltr.className='altr';ltr.textContent=String.fromCharCode(65+dIdx);
+      btn.appendChild(ltr);btn.appendChild(document.createTextNode(q.opts[oIdx]));
+      btn.onclick=function(){pickA(oIdx===correctOrig,btn,od,q,correctOrig);};
+      od.appendChild(btn);
+    })(di,idxs[di]);
+  }
+
+  var fb=document.getElementById('qfb');fb.style.display='none';fb.textContent='';
+  document.getElementById('qtw').style.display='none';
+  updateQScore();
+}
+
+function pickA(isOk,btn,od,q,correctOrig){
+  if(qans)return;qans=true;
+  var allBtns=od.querySelectorAll('.ans-btn');
+  for(var i=0;i<allBtns.length;i++){allBtns[i].disabled=true;allBtns[i].classList.add('dim');}
+  if(!isOk){
+    btn.classList.remove('dim');btn.classList.add('wrong');
+    qw++;qwrong.push(q);
+    document.getElementById('qcard').classList.add('shake');
+    setTimeout(function(){document.getElementById('qcard').classList.remove('shake');},350);
+  } else {
+    btn.classList.remove('dim');btn.classList.add('correct');
+    qc++;
+    var coinsEarned=Math.floor(Math.random()*3)+3; // 3-5 coins per correct
+    qCoins+=coinsEarned;
+    document.getElementById('qcard').classList.add('glow');
+    setTimeout(function(){document.getElementById('qcard').classList.remove('glow');},400);
+    // XP burst animation
+    xpBurst(btn,'+'+coinsEarned+'🪙');
+  }
+  // Mark correct
+  var ct=q.opts[correctOrig];
+  for(var i=0;i<allBtns.length;i++){
+    var bt=allBtns[i].textContent.replace(/^[A-Z]/,'').trim();
+    if(bt===ct){allBtns[i].classList.remove('dim');allBtns[i].classList.add('correct');break;}
+  }
+  var s=curQuiz.settings||{};
+  var fb=document.getElementById('qfb');
+  fb.style.display='block';
+  fb.style.background=isOk?'var(--green-bg)':'var(--red-bg)';
+  fb.style.border='1.5px solid '+(isOk?'rgba(52,199,89,.3)':'rgba(255,59,48,.3)');
+  fb.style.color=isOk?'#1a5c2a':'#7a1a1a';
+  var msg=isOk?'✅ Pravilno!':'❌ Napačno. Pravilen odgovor: '+ct;
+  if(q.exp)msg+='\n💡 '+q.exp;
+  fb.textContent=msg;
+  updateQScore();
+  var tw=document.getElementById('qtw'),tb=document.getElementById('qtb');
+  tw.style.display='block';tb.className='tbar '+(isOk?'ok':'no');
+  var delay=(isOk?(s.correctTime||2):(s.wrongTime||5))*1000;
+  tb.style.transition='none';tb.style.width='100%';
+  setTimeout(function(){tb.style.transition='width '+delay+'ms linear';tb.style.width='0%';},60);
+  qtimer=setTimeout(function(){qi++;showQ();},delay);
+}
+
+function updateQScore(){
+  var total=qc+qw;
+  document.getElementById('q-sc').textContent=qc;
+  document.getElementById('q-sw').textContent=qw;
+  document.getElementById('q-pct').textContent=total>0?Math.round(qc/total*100)+'%':'–';
+  document.getElementById('q-xp').textContent=qc*10;
+  document.getElementById('q-coins').textContent=qCoins;
+}
+
+function showEnd(){
+  if(qtimer)clearTimeout(qtimer);
+  var total=qc+qw;
+  var pct=total>0?Math.round(qc/total*100):0;
+  var xpEarned=qc*10;
+  var coinsEarned=qCoins;
+
+  // Update streak
+  var today=new Date().toDateString();
+  if(S.lastPlay!==today){
+    var yesterday=new Date(Date.now()-86400000).toDateString();
+    if(S.lastPlay===yesterday){S.streak++;}
+    else if(S.lastPlay!==today){S.streak=1;}
+    S.lastPlay=today;
+  }
+
+  S.xp+=xpEarned;
+  S.coins+=coinsEarned;
+  S.totalPlayed++;
+  if(curQuiz&&curQuiz.id&&pct>(S.bestScores[curQuiz.id]||0))S.bestScores[curQuiz.id]=pct;
+  saveS();
+
+  document.getElementById('e-pct').textContent=pct+'%';
+  document.getElementById('e-c').textContent=qc;
+  document.getElementById('e-w').textContent=qw;
+  document.getElementById('e-xp').textContent='+'+xpEarned;
+  document.getElementById('e-coins').textContent='+'+coinsEarned;
+
+  var emoji,msg;
+  if(pct>=90){emoji='🏆';msg='Odlično! Mojster si!';}
+  else if(pct>=75){emoji='🎯';msg='Zelo dobro! Še malo vaje!';}
+  else if(pct>=60){emoji='📚';msg='Dobro! Nadaljuj z učenjem!';}
+  else if(pct>=40){emoji='💪';msg='Ponovi napačne odgovore!';}
+  else{emoji='🔄';msg='Začni znova – zmoreš!';}
+  document.getElementById('e-emoji').textContent=emoji;
+  document.getElementById('e-msg').textContent=msg;
+
+  // Reward
+  var rw=document.getElementById('e-reward');
+  var rwt=document.getElementById('e-reward-text');
+  var cheapProp=PROPS.find(function(p){return !S.properties[p.id]&&S.coins>=p.price;});
+  if(cheapProp){
+    rw.style.display='block';
+    rwt.textContent='Imaš dovolj kovancev za '+cheapProp.emoji+' '+cheapProp.name+'! Pojdi na Mapo in jo kupi.';
+  } else {
+    rw.style.display='none';
+  }
+
+  goTo('s-end');
+  if(pct>=80)confetti();
+}
+
+function restartQuiz(){if(curQuiz)startQuiz(curQuiz);}
+function restartWrong(){
+  if(qwrong.length===0){toast('🎉 Ni napačnih!');return;}
+  var tmp={};for(var k in curQuiz)tmp[k]=curQuiz[k];
+  tmp.questions=qwrong;startQuiz(tmp);
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════
+function showModal(html){
+  document.getElementById('msheet-content').innerHTML=html;
+  document.getElementById('moverlay').classList.add('on');
+}
+function closeModal(){document.getElementById('moverlay').classList.remove('on');}
+document.getElementById('moverlay').addEventListener('click',function(e){if(e.target===document.getElementById('moverlay'))closeModal();});
+
+function confirmDel(id){
+  var quiz=S.quizzes.find(function(q){return q.id===id;});
+  showModal('<div class="mhandle"></div><h3 style="font-size:1.1rem;font-weight:800;margin-bottom:8px">🗑️ Izbriši kviz</h3><p style="color:var(--ink3);font-size:.86rem;margin-bottom:16px">Ali res želiš izbrisati "'+esc(quiz?quiz.name:'')+'"?</p><div style="display:flex;gap:9px"><button class="btn btn-md btn-ghost" style="flex:1" onclick="closeModal()">Prekliči</button><button class="btn btn-md btn-red" style="flex:1" onclick="delQ('+id+')">Izbriši</button></div>');
+}
+function delQ(id){S.quizzes=S.quizzes.filter(function(q){return q.id!==id;});saveS();closeModal();renderQL();toast('🗑️ Kviz izbrisan!');}
+
+function confirmQuit(){
+  if(qtimer)clearTimeout(qtimer);
+  showModal('<div class="mhandle"></div><h3 style="font-size:1.1rem;font-weight:800;margin-bottom:8px">✕ Zapri kviz</h3><p style="color:var(--ink3);font-size:.86rem;margin-bottom:16px">Napredek bo izgubljen.</p><div style="display:flex;gap:9px"><button class="btn btn-md btn-ghost" style="flex:1" onclick="closeModal()">Nadaljuj</button><button class="btn btn-md btn-red" style="flex:1" onclick="closeModal();goTo(\'s-quiz-list\')">Zapri</button></div>');
+}
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
+var toastT=null;
+function toast(msg){
+  var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
+  if(toastT)clearTimeout(toastT);
+  toastT=setTimeout(function(){el.classList.remove('show');},2800);
+}
+
+// ═══════════════════════════════════════════════════════
+// XP BURST ANIMATION
+// ═══════════════════════════════════════════════════════
+function xpBurst(el,text){
+  var rect=el.getBoundingClientRect();
+  var div=document.createElement('div');
+  div.className='xpburst';div.textContent=text;
+  div.style.left=(rect.left+rect.width/2-20)+'px';
+  div.style.top=(rect.top-10)+'px';
+  document.body.appendChild(div);
+  setTimeout(function(){if(div.parentNode)div.parentNode.removeChild(div);},900);
+}
+
+// ═══════════════════════════════════════════════════════
+// CONFETTI
+// ═══════════════════════════════════════════════════════
+var CONF_COLORS=['#007AFF','#34C759','#FF9500','#FF2D55','#AF52DE','#FFD60A','#5AC8FA'];
+function confetti(){
+  for(var i=0;i<40;i++){
+    (function(i){
+      setTimeout(function(){
+        var el=document.createElement('div');
+        el.className='conf';
+        el.style.left=Math.random()*100+'vw';
+        el.style.top='-10px';
+        el.style.background=CONF_COLORS[Math.floor(Math.random()*CONF_COLORS.length)];
+        el.style.animationDuration=(1.5+Math.random()*1.5)+'s';
+        el.style.animationDelay='0s';
+        el.style.transform='rotate('+Math.random()*360+'deg)';
+        document.body.appendChild(el);
+        setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},3500);
+      },i*40);
+    })(i);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+function shuffle(arr){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+
+// PROFESSOR CSV ENGINE
+function csvEscape(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function parseCSVRows(text){var rows=[],row=[],cell='',quoted=false;for(var i=0;i<text.length;i++){var c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}else if(c==='"')quoted=false;else cell+=c;}else{if(c==='"')quoted=true;else if(c===','){row.push(cell);cell='';}else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell='';}else if(c!=='\r')cell+=c;}}row.push(cell);if(row.some(function(x){return x.trim()}))rows.push(row);return rows;}
+function quizFromCSV(text){var rows=parseCSVRows(text);if(rows.length<2)return[];var h=rows[0].map(function(x){return x.trim().toLowerCase()});function col(names){for(var i=0;i<names.length;i++){var n=h.indexOf(names[i]);if(n>=0)return n;}return-1;}var qi=col(['question','vprašanje','vprasanje']),o1=col(['option1','odgovor1']),o2=col(['option2','odgovor2']),o3=col(['option3','odgovor3']),o4=col(['option4','odgovor4']),ci=col(['correct','pravilen','pravilen_odgovor']),ei=col(['explanation','razlaga']),cati=col(['category','kategorija']);if(qi<0||o1<0||o2<0)return[];return rows.slice(1).map(function(r){var opts=[r[o1],r[o2],o3>=0?r[o3]:'',o4>=0?r[o4]:''].map(function(x){return String(x||'').trim()}).filter(Boolean),raw=String(r[ci]||'1').trim(),ans=/^[1-4]$/.test(raw)?Number(raw)-1:opts.findIndex(function(x){return x.toLowerCase()===raw.toLowerCase()});if(ans<0)ans=0;return{q:String(r[qi]||'').trim(),opts:opts,ans:Math.min(ans,opts.length-1),exp:ei>=0?String(r[ei]||'').trim():'',category:cati>=0?String(r[cati]||'').trim():''};}).filter(function(q){return q.q&&q.opts.length>=2});}
+async function importQuizCSV(file){if(!file)return;var st=document.getElementById('csv-status');try{var qs=quizFromCSV(await file.text());if(!qs.length)throw new Error();parsed=qs;document.getElementById('impta').value=qs.map(function(q){return q.q+'\n'+q.opts.map(function(o,i){return (i+1)+'. '+o+(i===q.ans?' (P)':'')}).join('\n')+(q.exp?'\n// '+q.exp:'')}).join('\n\n');if(!document.getElementById('qname').value)document.getElementById('qname').value=file.name.replace(/\.csv$/i,'');if(!document.getElementById('qcat').value){var cat=qs.find(function(q){return q.category});document.getElementById('qcat').value=cat?cat.category:'Uvoženo';}showPreview(qs);st.className='csv-status on';st.textContent='✓ Uvoženih '+qs.length+' vprašanj. Preglej in tapni Shrani.';saveS();}catch(e){st.className='csv-status on';st.style.background='var(--red-bg)';st.style.color='#a22d45';st.textContent='CSV ni veljaven. Uporabi preneseni primer in ohrani imena stolpcev.';}finally{document.getElementById('csv-file').value='';}}
+function buildProfessorPrompt(){var topic=(document.getElementById('prof-topic')?.value||'Nemščina').trim(),level=(document.getElementById('prof-level')?.value||'B1').trim(),count=Math.max(5,Math.min(500,parseInt(document.getElementById('prof-count')?.value||20,10)||20));var text=`Ti si profesor z 20 leti izkušenj na področju: ${topic}. Strokovno poučuješ raven: ${level}.\n\nUstvari natanko ${count} kakovostnih učnih vprašanj. Vprašanja naj sistematično pokrijejo najpomembnejše znanje področja, od osnov do praktične uporabe. Ne ponavljaj vprašanj. Napačni odgovori naj bodo verjetni, vendar nedvoumno napačni. Za vsako vprašanje napiši kratko, natančno razlago v slovenščini.\n\nVRNI SAMO VELJAVEN CSV. Brez uvoda, zaključka, Markdown kode ali dodatnega besedila.\n\nPrva vrstica mora biti NATANKO:\nquestion,option1,option2,option3,option4,correct,explanation,category\n\nPRAVILA CSV:\n1. Vsako vprašanje naj bo v eni vrstici CSV.\n2. correct naj bo številka 1, 2, 3 ali 4.\n3. Vsa polja, ki vsebujejo vejico ali narekovaj, zapri v dvojne narekovaje.\n4. Dvojni narekovaj znotraj polja zapiši kot dva dvojna narekovaja.\n5. Vsako vprašanje mora imeti natanko štiri različne odgovore.\n6. Samo en odgovor je pravilen.\n7. Položaj pravilnega odgovora enakomerno razporedi med 1, 2, 3 in 4.\n8. category naj bo kratko podpodročje vprašanja.\n9. Pred oddajo preveri, da ima CSV glavo in natanko ${count} podatkovnih vrstic.\n\nPRIMER:\nquestion,option1,option2,option3,option4,correct,explanation,category\n"Kateri stavek je pravilen?","Ich muss heute arbeiten.","Ich heute muss arbeiten.","Ich muss arbeiten heute.","Heute ich arbeiten muss.",1,"Modalni glagol je na drugem mestu, nedoločnik pa na koncu.","Besedni red"\n\nZdaj ustvari CSV za področje ${topic}, raven ${level}, skupaj ${count} vprašanj.`;var out=document.getElementById('prof-prompt');if(out)out.value=text;return text;}
+async function copyProfessorPrompt(){var t=buildProfessorPrompt();try{await navigator.clipboard.writeText(t);toast('✓ Prompt je kopiran.');}catch(e){var x=document.getElementById('prof-prompt');x.focus();x.select();document.execCommand('copy');toast('✓ Prompt je kopiran.');}}
+function downloadText(name,text,type){var b=new Blob([text],{type:type||'text/plain;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},500);}
+function downloadProfessorPrompt(){downloadText('AI-profesor-prompt.txt',buildProfessorPrompt());}
+function downloadCSVTemplate(){var csv='question,option1,option2,option3,option4,correct,explanation,category\n"Kateri stavek je pravilen?","Ich muss heute arbeiten.","Ich heute muss arbeiten.","Ich muss arbeiten heute.","Heute ich arbeiten muss.",1,"Modalni glagol je na drugem mestu, nedoločnik pa na koncu.","Nemščina B1"\n';downloadText('KvizOpoly-primer.csv',csv,'text/csv;charset=utf-8');}
+setTimeout(buildProfessorPrompt,0);
+if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(e){console.warn(e)});});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+loadS();
+renderHome();
+restoreFromIndexedDB();
+</script>
+</body>
+</html>
